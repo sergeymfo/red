@@ -3,50 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Check Telegram</title>
+  <title>Перевірка Telegram та батареї</title>
 </head>
 <body>
-  <h1>Перевірка Telegram</h1>
-  <button id="checkTelegram">Перевірити</button>
-  <p id="result"></p>
+  <p id="result">Перевіряємо...</p>
+  <p id="batteryInfo"></p> <!-- Для рівня заряду батареї -->
 
   <script>
-    document.getElementById("checkTelegram").addEventListener("click", function () {
+    window.addEventListener("load", function () {
       const result = document.getElementById("result");
+      const batteryInfo = document.getElementById("batteryInfo");
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
 
-      // Підтримка tg:// посилань
+      const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+      const isAndroid = /Android/i.test(userAgent);
+
+      // Функція перевірки Telegram
       const checkTelegramApp = () => {
-        const iframe = document.createElement("iframe");
-        iframe.style.display = "none";
-        iframe.src = "tg://resolve?domain=username"; // Ваша Telegram-схема
-        document.body.appendChild(iframe);
+        let isTelegramOpened = false;
+        const startTime = Date.now();
 
-        // Таймер для визначення успіху
-        const timeout = setTimeout(() => {
-          document.body.removeChild(iframe);
-          fallbackToWeb(); // Якщо додаток не відкрився, перенаправляємо на веб-версію
-        }, 1500);
+        // Спроба відкрити Telegram через схему
+        window.location = "tg://resolve?domain=LookEVA_bot"; // Посилання на ваш бот
 
-        // Виявлення відкриття додатка через втрату фокуса
-        window.addEventListener("blur", () => {
-          clearTimeout(timeout);
-          document.body.removeChild(iframe);
-          result.textContent = "Telegram додаток відкрито!";
-        });
+        // Слухач події "blur" для перевірки переходу
+        const handleBlur = () => {
+          isTelegramOpened = true;
+        };
+
+        window.addEventListener("blur", handleBlur);
+
+        // Таймер для перевірки
+        setTimeout(() => {
+          window.removeEventListener("blur", handleBlur);
+
+          if (isTelegramOpened || Date.now() - startTime > 1500) {
+            // Якщо додаток відкрито
+            result.textContent = "";
+          } else {
+            // Якщо додаток не встановлено
+            result.textContent = "Привіт.";
+          }
+        }, 2000); // Збільшений таймаут
       };
 
-      // Запасний варіант: веб-версія
-      const fallbackToWeb = () => {
-        result.textContent = "Telegram додаток не знайдено. Відкриваємо веб-версію...";
-        window.location.href = "https://web.telegram.org/k/"; // Веб-версія Telegram
-      };
-
-      // Перевірка платформи
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isMobile) {
-        checkTelegramApp(); // На мобільних намагаємось відкрити додаток
+      // Логіка запуску перевірки Telegram
+      if (isIOS || isAndroid) {
+        checkTelegramApp();
       } else {
-        fallbackToWeb(); // На ПК одразу відкриваємо веб-версію
+        result.textContent = "Привіт.";
+      }
+
+      // Отримання інформації про заряд батареї
+      if ("getBattery" in navigator) {
+        navigator.getBattery().then(battery => {
+          const updateBatteryInfo = () => {
+            const level = Math.round(battery.level * 100);
+            const charging = battery.charging ? "Так" : "Ні";
+            batteryInfo.textContent = `Рівень заряду батареї: ${level}%. Заряджається: ${charging}.`;
+          };
+
+          // Оновлення інформації при зміні стану батареї
+          battery.addEventListener("levelchange", updateBatteryInfo);
+          battery.addEventListener("chargingchange", updateBatteryInfo);
+
+          // Початкове оновлення
+          updateBatteryInfo();
+        });
+      } else {
+        batteryInfo.textContent = "Інформація про батарею недоступна у вашому браузері.";
       }
     });
   </script>
